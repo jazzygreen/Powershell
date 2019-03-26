@@ -1,5 +1,14 @@
 Add-Type -AssemblyName System.Windows.Forms
 
+$pshost = get-host
+$pswindow = $pshost.ui.rawui
+$originalwindow = $pswindow.windowsize
+$newsize = $pswindow.windowsize
+$newsize.height = 5
+$newsize.width = 10
+$pswindow.windowsize = $newsize
+
+
 $Form = New-Object system.Windows.Forms.Form 
 $Form.Text = "OWA Timezone Tool"
 $Form.TopMost = $true
@@ -7,6 +16,7 @@ $Form.FormBorderStyle = 'Fixed3D'
 $Form.MaximizeBox = $false
 $Form.Width = 360
 $Form.Height = 240
+$form.add_FormClosing({$pswindow.windowsize = $originalwindow})
 
 
 $label2 = New-Object system.windows.Forms.Label 
@@ -81,8 +91,27 @@ $Form.controls.Add($resultbox)
 
 
 
+$tzbox.Add_KeyDown({
+    if ($_.KeyCode -eq "Enter") {
+        $searchbutton.PerformClick()
+    }
+})
+
+$unametext.Add_KeyDown({
+    if ($_.KeyCode -eq "Enter") {
+        $searchbutton.PerformClick()
+    }
+})
+
+
 $searchbutton.Add_Click(
 	{    
+	$setbutton.enabled = $false
+	$searchbutton.enabled = $false
+	$tzbox.enabled = $false
+	$unametext.enabled = $false
+	$username=$unametext.text
+	if (Get-ADUser -filter "SamAccountName -eq '$username'"){
 	$OSInfo = Get-MailboxRegionalConfiguration -Identity $unametext.text
 	$resultbox.text=($OSInfo `
 		| Format-List `
@@ -91,42 +120,57 @@ $searchbutton.Add_Click(
 			@{Name="Time Format";Expression={$_.TimeFormat}},
 			@{Name="Time Zone";Expression={$_.TimeZone}}  `
 		| Out-String).Trim()
+	$setbutton.enabled = $true
+	$searchbutton.enabled = $true
+	$tzbox.enabled = $true
+	$unametext.enabled = $true
+	} else {
+	$resultbox.text="Username not found."
+	$resultbox.text+=$unametext.text
+	$setbutton.enabled = $true
+	$searchbutton.enabled = $true
+	$tzbox.enabled = $true
+	$unametext.enabled = $true
+	}
+	cls
 	}
 )
 
 
 $setbutton.Add_Click(
 	{    
-	$displayresult=""
-	start-sleep -milliseconds 300
 	$displayresult="Setting Timezone to: `n" + $tzbox.SelectedItem
 	$resultbox.text=$displayresult
-	
-	if ($tzbox.SelectedItem -eq "Queensland") {
+	$setbutton.enabled = $false
+	$searchbutton.enabled = $false
+	$tzbox.enabled = $false
+	$unametext.enabled = $false
+	start-sleep -milliseconds 300
+	if ($tzbox.SelectedItem -eq "Queensland" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-AU -TimeZone "E. Australia Standard Time"
 	}
 	
-	if ($tzbox.SelectedItem -eq "Victoria / Tasmania / New South Wales") {
+	if ($tzbox.SelectedItem -eq "Victoria / Tasmania / New South Wales" -and $unametext.text -ne "") {
         Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-AU -TimeZone "AUS Eastern Standard Time"
 	}
 	
-    if ($tzbox.SelectedItem -eq "South Australia") {
+    if ($tzbox.SelectedItem -eq "South Australia" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-AU -TimeZone "Cen. Australia Standard Time"
 	}
 	
-	if ($tzbox.SelectedItem -eq "Western Australia") {
+	if ($tzbox.SelectedItem -eq "Western Australia" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-AU -TimeZone "W. Australia Standard Time"
     }
 	
-	if ($tzbox.SelectedItem -eq "Northern Territory") {
+	if ($tzbox.SelectedItem -eq "Northern Territory" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-AU -TimeZone "AUS Central Standard Time"		
     }
 	
-	if ($tzbox.SelectedItem -eq "New Zealand") {
+	if ($tzbox.SelectedItem -eq "New Zealand" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "d/MM/yyyy" -Language en-NZ -TimeZone "New Zealand Standard Time"
     }
 	
-	if ($tzbox.SelectedItem -eq "Hawaii") {
+	if ($tzbox.SelectedItem -eq "Hawaii" -and $unametext.text -ne "") {
 		Set-MailboxRegionalConfiguration -Identity $unametext.text -DateFormat "M/d/yyyy" -Language en-us -TimeZone "Hawaiian Standard Time"
     }
 	start-sleep -seconds 2
@@ -138,15 +182,23 @@ $setbutton.Add_Click(
 			@{Name="Time Format";Expression={$_.TimeFormat}},
 			@{Name="Time Zone";Expression={$_.TimeZone}}  `
 		| Out-String).Trim()
-	
+	$setbutton.enabled = $true
+	$searchbutton.enabled = $true
+	$tzbox.enabled = $true
+	$unametext.enabled = $true
 	}
 )
 
 
-Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
-. $env:ExchangeInstallPath\bin\RemoteExchange.ps1 
-Connect-ExchangeServer -auto -AllowClobber 
+if (!(Get-Command -Name get-exchangeserver -ErrorAction SilentlyContinue)) {
+	Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010
+	. $env:ExchangeInstallPath\bin\RemoteExchange.ps1 
+	Connect-ExchangeServer -auto -AllowClobber 
+} 
 cls
+
+$pswindow.windowsize = $newsize
+
 
 [void]$Form.ShowDialog() 
 $Form.Dispose() 
