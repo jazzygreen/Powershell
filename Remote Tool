@@ -8,9 +8,9 @@ $sccmviewer="C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole
 $vncviewer="C:\MG-IT\Applications\vncviewer.exe"
 $domain=$env:userdomain
 $sccmgroup="ConfigMgr Remote Control Users"
-$sccmgroup1="SG-IT Operations"
-$sccmgroup2="SG-IT TAC Users"
-$sccmgroup3"SG-SCCM-RemoteControl-Gubse"
+$sccmgroup1="Domain Admins"
+$sccmgroup2="Domain Users"
+$sccmgroup3"My_SCCM_GROUP"
 
 
 
